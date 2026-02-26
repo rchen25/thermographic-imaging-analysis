@@ -1,0 +1,41 @@
+{
+  "session_id": "001",
+  "analyses": {
+    "LEG_FRONT": {
+      "visual_summary": "Initial thermographic scan of LEG_FRONT shows a mean temperature of 24.46\u00b0C. Significant baseline heat concentration detected in the right side.",
+      "asymmetry_report": {
+        "baseline_asymmetry": "0.80\u00b0C deviation",
+        "primary_side": "Right",
+        "classification": "Subtle"
+      },
+      "inflammation_trend": {
+        "acute_response": "Mean temperature increased by -8.52\u00b0C post-workout.",
+        "peak_intensity": "Maximum localized increase of 7.50\u00b0C detected.",
+        "new_asymmetries": "Observed"
+      },
+      "recovery_status": {
+        "recovery_percentage": "104.6%",
+        "lingering_hotspots": "Present",
+        "recommendation": "High Risk: Implement immediate cryotherapy and 24hr complete rest. Possible localized strain."
+      }
+    },
+    "LEG_BACK": {
+      "visual_summary": "Initial thermographic scan of LEG_BACK shows a mean temperature of 24.59\u00b0C. Heat distribution is relatively uniform across both limbs.",
+      "asymmetry_report": {
+        "baseline_asymmetry": "0.16\u00b0C deviation",
+        "primary_side": "Right",
+        "classification": "Negligible"
+      },
+      "inflammation_trend": {
+        "acute_response": "Mean temperature increased by -7.43\u00b0C post-workout.",
+        "peak_intensity": "Maximum localized increase of 6.10\u00b0C detected.",
+        "new_asymmetries": "Observed"
+      },
+      "recovery_status": {
+        "recovery_percentage": "106.8%",
+        "lingering_hotspots": "Present",
+        "recommendation": "High Risk: Implement immediate cryotherapy and 24hr complete rest. Possible localized strain."
+      }
+    }
+  }
+}
