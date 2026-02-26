@@ -22,26 +22,39 @@ A specialized Sports Medicine and Thermographic Imaging system designed to analy
 - Node.js 18+
 - npm
 
-## 🔧 Installation & Setup
+## 🔧 Local Setup Instructions
 
-### 1. Backend Setup
+To run the full agentic dashboard locally, you will need two terminal windows open simultaneously.
+
+### Step 1: Backend API
+The backend processes the thermal data and serves the images.
 ```bash
-# Install dependencies
+# Navigate to project root
 pip install fastapi uvicorn pandas openpyxl numpy
 
-# Start the API server
+# Start the server
 python3 backend/main.py
 ```
+*The API will be live at http://localhost:8000. You can verify it by visiting http://localhost:8000/sessions in your browser.*
 
-### 2. Frontend Setup
+### Step 2: Frontend Dashboard
+The frontend provides the visual interface for the agent.
 ```bash
+# In a new terminal window
 cd frontend
+
 # Install dependencies
 npm install
 
-# Start the development server
+# Start the Vite development server
 npm run dev
 ```
+*Open your browser to the URL provided by Vite (usually http://localhost:5173).*
+
+### Step 3: Run Analysis
+1. Select **Session 001** from the dropdown.
+2. Click **Run Analysis**.
+3. The Agent will display the thermographic images and generate its clinical report.
 
 ## 📈 Analysis Workflow
 
