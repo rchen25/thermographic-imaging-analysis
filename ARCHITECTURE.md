@@ -2,6 +2,40 @@
 
 The Thermographic Imaging Analysis Agent is built on a decoupled, pipeline-centric architecture that separates raw data processing (Vision) from clinical reasoning (Agentic Graph).
 
+## 0. System Pipeline Diagram
+
+```mermaid
+graph TD
+    subgraph Data_Ingestion [Data Ingestion]
+        A[Raw Excel Data .xlsx] --> B[NumPy Temperature Matrix]
+        P[PNG Images] --> UI[Frontend Dashboard]
+    end
+
+    subgraph Vision_Pipeline [Vision Pipeline: processor.py]
+        B --> C{Thermal Thresholding}
+        C -->|26°C - 38°C| D[Binary Skin Mask]
+        D --> E[Morphological Cleaning]
+        E --> F[Contour Detection]
+        F --> G[ROI Extraction: Left vs Right Leg]
+        G --> H[Statistical Extraction]
+        H -->|Mean, Max, Asymmetry| I[Cleaned Metrics]
+    end
+
+    subgraph Reasoning_Pipeline [Reasoning Pipeline: graph.py]
+        I --> J[Node: Clinical Interpreter]
+        J --> K[Node: Risk Assessor]
+        K --> L[Node: Recovery Planner]
+        L --> M[Stateful Graph Output]
+    end
+
+    subgraph Delivery_Layer [Delivery Layer]
+        M --> N[FastAPI Backend]
+        N --> UI
+    end
+```
+
+---
+
 ## 1. Data Flow Overview
 
 1.  **Input**: The system ingests raw thermal data in two formats:
