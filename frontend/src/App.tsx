@@ -10,17 +10,29 @@ interface Analysis {
   }
   asymmetry_report: {
     baseline_asymmetry: string
-    primary_side: string
+    hotter_side: string
+    peak_region: string
+    peak_value: string
     classification: string
   }
+  ambient_stats?: {
+    background_temp: string
+    relative_skin_temp: string
+  }
   inflammation_trend?: {
-    acute_response: string
+    asymmetry_change: string
+    hotter_side: string
+    peak_asymmetry_node: string
+    relative_temp_shift: string
     peak_intensity: string
-    new_asymmetries: string
+  }
+  recovery_delta?: {
+    asymmetry_recovery: string
+    hotter_side: string
+    peak_recovery_node: string
+    relative_temp_recovery: string
   }
   recovery_status?: {
-    recovery_percentage: string
-    lingering_hotspots: string
     recommendation: string
   }
 }
@@ -126,31 +138,63 @@ function App() {
               <p style={{ fontSize: '0.9rem', marginBottom: '20px' }}>{data.visual_summary}</p>
 
               <div style={{ marginBottom: '20px' }}>
-                <h3>Asymmetry Report</h3>
+                <h3>Baseline Metrics</h3>
                 <div className="metric">
-                  <span>Deviation:</span>
+                  <span>Avg Asymmetry:</span>
                   <span>{data.asymmetry_report.baseline_asymmetry}</span>
                 </div>
                 <div className="metric">
-                  <span>Primary Side:</span>
-                  <span>{data.asymmetry_report.primary_side}</span>
+                  <span>Hotter Side:</span>
+                  <span style={{ fontWeight: 'bold' }}>{data.asymmetry_report.hotter_side}</span>
                 </div>
                 <div className="metric">
-                  <span>Class:</span>
-                  <span style={{ fontWeight: 'bold' }}>{data.asymmetry_report.classification}</span>
+                  <span>Peak Region:</span>
+                  <span style={{ color: '#fbbf24' }}>{data.asymmetry_report.peak_region}</span>
                 </div>
+                {data.ambient_stats && (
+                  <>
+                    <div className="metric">
+                      <span>Relative Skin:</span>
+                      <span>{data.ambient_stats.relative_skin_temp}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               {data.inflammation_trend && (
-                <div style={{ marginBottom: '20px' }}>
-                  <h3>Inflammation Trend</h3>
+                <div style={{ marginBottom: '20px', borderTop: '1px solid #333', paddingTop: '10px' }}>
+                  <h3>Inflammation Trend (Post)</h3>
                   <div className="metric">
-                    <span>Peak Intensity:</span>
-                    <span>{data.inflammation_trend.peak_intensity}</span>
+                    <span>Asymmetry Change:</span>
+                    <span style={{ color: data.inflammation_trend.asymmetry_change.startsWith('+') ? '#ef4444' : '#4ade80' }}>
+                      {data.inflammation_trend.asymmetry_change}
+                    </span>
                   </div>
                   <div className="metric">
-                    <span>New Asymmetries:</span>
-                    <span>{data.inflammation_trend.new_asymmetries}</span>
+                    <span>Hotter Side:</span>
+                    <span style={{ fontWeight: 'bold' }}>{data.inflammation_trend.hotter_side}</span>
+                  </div>
+                  <div className="metric">
+                    <span>Peak Node:</span>
+                    <span style={{ color: '#fbbf24' }}>{data.inflammation_trend.peak_asymmetry_node}</span>
+                  </div>
+                </div>
+              )}
+
+              {data.recovery_delta && (
+                <div style={{ marginBottom: '20px', borderTop: '1px solid #333', paddingTop: '10px' }}>
+                  <h3>Recovery Delta (48h)</h3>
+                  <div className="metric">
+                    <span>Asymmetry Recov:</span>
+                    <span>{data.recovery_delta.asymmetry_recovery}</span>
+                  </div>
+                  <div className="metric">
+                    <span>Hotter Side:</span>
+                    <span style={{ fontWeight: 'bold' }}>{data.recovery_delta.hotter_side}</span>
+                  </div>
+                  <div className="metric">
+                    <span>Peak Recov Node:</span>
+                    <span style={{ color: '#fbbf24' }}>{data.recovery_delta.peak_recovery_node}</span>
                   </div>
                 </div>
               )}
@@ -160,10 +204,6 @@ function App() {
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <ShieldAlert size={18} /> Recovery Recommendation
                   </h3>
-                  <div className="metric">
-                    <span>Recovery %:</span>
-                    <span>{data.recovery_status.recovery_percentage}</span>
-                  </div>
                   <p style={{ 
                     marginTop: '10px', 
                     fontSize: '0.9rem', 

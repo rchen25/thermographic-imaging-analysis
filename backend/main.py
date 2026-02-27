@@ -31,6 +31,8 @@ async def analyze_session(session_id: str):
         report = analyzer.analyze_session(session_id)
         return report
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 # Serve static images

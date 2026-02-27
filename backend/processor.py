@@ -25,54 +25,87 @@ class ThermalImageProcessor:
     @staticmethod
     def get_leg_rois(thermal_data, mask):
         """
-        Identifies left and right leg ROIs from the skin mask.
-        Returns stats for each leg specifically.
+        Identifies left and right leg ROIs, then segments them into Upper/Lower regions.
         """
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        # Sort contours by area and take the two largest (presumably the legs)
         contours = sorted(contours, key=cv2.contourArea, reverse=True)[:2]
         
         if len(contours) < 2:
-            # Fallback to simple split if segmentation fails to find two distinct legs
-            h, w = thermal_data.shape
-            return {
-                "left": thermal_data[:, :w//2][mask[:, :w//2] > 0],
-                "right": thermal_data[:, w//2:][mask[:, w//2:] > 0]
-            }
+            return None
 
-        # Determine which is left and right based on centroid X position
         leg_data = []
         for cnt in contours:
+            x, y, w, h = cv2.boundingRect(cnt)
             m = cv2.moments(cnt)
-            if m["m00"] == 0: continue
             cx = int(m["m10"] / m["m00"])
             
-            # Create a mask for just this contour
             c_mask = np.zeros(mask.shape, np.uint8)
             cv2.drawContours(c_mask, [cnt], -1, 255, -1)
             
-            # Extract pixels
-            pixels = thermal_data[c_mask > 0]
-            leg_data.append({"cx": cx, "pixels": pixels})
+            # Vertical Split (Knee level approx at 50% height of the bounding box)
+            mid_y = y + (h // 2)
+            
+            upper_mask = c_mask.copy()
+            upper_mask[mid_y:, :] = 0
+            
+            lower_mask = c_mask.copy()
+            lower_mask[:mid_y, :] = 0
+            
+            leg_data.append({
+                "cx": cx,
+                "upper": thermal_data[upper_mask > 0],
+                "lower": thermal_data[lower_mask > 0]
+            })
             
         leg_data = sorted(leg_data, key=lambda x: x["cx"])
         
         return {
-            "left": leg_data[0]["pixels"] if len(leg_data) > 0 else np.array([]),
-            "right": leg_data[1]["pixels"] if len(leg_data) > 1 else np.array([])
+            "left": {"upper": leg_data[0]["upper"], "lower": leg_data[0]["lower"]},
+            "right": {"upper": leg_data[1]["upper"], "lower": leg_data[1]["lower"]}
         }
 
     def process_frame(self, thermal_data):
         mask = self.create_skin_mask(thermal_data)
         legs = self.get_leg_rois(thermal_data, mask)
         
+        # Calculate background stats (ambient environment)
+        bg_mask = cv2.bitwise_not(mask)
+        bg_mean = np.mean(thermal_data[bg_mask > 0]) if np.any(bg_mask) else 0
+        
+        # Default stats if no legs detected
+        if not legs:
+            return {
+                "background_mean": bg_mean,
+                "overall_mean": 0,
+                "relative_temp": 0,
+                "max_temp": 0,
+                "asymmetry": 0,
+                "regions": {}
+            }
+
+        skin_pixels = thermal_data[mask > 0]
+        skin_mean = np.mean(skin_pixels) if len(skin_pixels) > 0 else 0
+        
         stats = {
-            "overall_mean": np.mean(thermal_data[mask > 0]) if np.any(mask) else 0,
-            "left_mean": np.mean(legs["left"]) if len(legs["left"]) > 0 else 0,
-            "right_mean": np.mean(legs["right"]) if len(legs["right"]) > 0 else 0,
-            "max_temp": np.max(thermal_data[mask > 0]) if np.any(mask) else 0
+            "background_mean": bg_mean,
+            "overall_mean": skin_mean,
+            "relative_temp": skin_mean - bg_mean,
+            "max_temp": np.max(skin_pixels) if len(skin_pixels) > 0 else 0,
+            "regions": {
+                "upper": {
+                    "left_mean": np.mean(legs["left"]["upper"]) if len(legs["left"]["upper"]) > 0 else 0,
+                    "right_mean": np.mean(legs["right"]["upper"]) if len(legs["right"]["upper"]) > 0 else 0,
+                },
+                "lower": {
+                    "left_mean": np.mean(legs["left"]["lower"]) if len(legs["left"]["lower"]) > 0 else 0,
+                    "right_mean": np.mean(legs["right"]["lower"]) if len(legs["right"]["lower"]) > 0 else 0,
+                }
+            }
         }
         
-        stats["asymmetry"] = stats["left_mean"] - stats["right_mean"]
+        stats["regions"]["upper"]["asymmetry"] = stats["regions"]["upper"]["left_mean"] - stats["regions"]["upper"]["right_mean"]
+        stats["regions"]["lower"]["asymmetry"] = stats["regions"]["lower"]["left_mean"] - stats["regions"]["lower"]["right_mean"]
+        
+        # Overall asymmetry is the average of regional asymmetries
+        stats["asymmetry"] = (stats["regions"]["upper"]["asymmetry"] + stats["regions"]["lower"]["asymmetry"]) / 2
         return stats

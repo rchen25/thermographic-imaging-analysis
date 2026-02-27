@@ -19,8 +19,28 @@ class ThermographicAnalyzer:
 
     def load_excel(self, file_path):
         df = pd.read_excel(file_path, header=None)
-        data = df.applymap(self.clean_temp_string).values
+        # Fix FutureWarning: Use map instead of applymap
+        data = df.map(self.clean_temp_string).values
         return data
+
+    def get_muscle_group(self, view, region):
+        mapping = {
+            "LEG_FRONT": {"upper": "Quadriceps", "lower": "Tibialis Anterior / Shins"},
+            "LEG_BACK": {"upper": "Hamstrings / Gluteal fold", "lower": "Gastrocnemius / Soleus (Calves)"}
+        }
+        return mapping.get(view, {}).get(region, "Unknown")
+
+    def get_max_asymmetry_info(self, view, regions_stats):
+        if not regions_stats:
+            return "Unknown", "N/A", 0.0
+            
+        upper_asym = abs(regions_stats.get("upper", {}).get("asymmetry", 0))
+        lower_asym = abs(regions_stats.get("lower", {}).get("asymmetry", 0))
+        
+        if upper_asym >= lower_asym:
+            return "Upper Leg", self.get_muscle_group(view, "upper"), upper_asym
+        else:
+            return "Lower Leg", self.get_muscle_group(view, "lower"), lower_asym
 
     def analyze_session(self, session_id):
         session_path = os.path.join(self.data_dir, session_id)
@@ -45,19 +65,23 @@ class ThermographicAnalyzer:
             }
             
             if view_data["pre"] is not None:
-                # 1. Run Advanced Vision Pipeline on Pre-workout (Baseline)
-                stats = self.processor.process_frame(view_data["pre"])
+                baseline_stats = self.processor.process_frame(view_data["pre"])
+                reg_name, muscle, val = self.get_max_asymmetry_info(view, baseline_stats["regions"])
                 
-                # 2. Run LangGraph Pipeline for interpretation
-                graph_result = self.graph.run(view, stats)
+                graph_result = self.graph.run(view, baseline_stats)
                 
-                # Format report for UI
                 report = {
                     "visual_summary": graph_result["interpretation"],
                     "asymmetry_report": {
-                        "baseline_asymmetry": f"{abs(stats['asymmetry']):.2f}°C",
-                        "primary_side": "Left" if stats['asymmetry'] > 0 else "Right",
+                        "baseline_asymmetry": f"{abs(baseline_stats['asymmetry']):.2f}°C",
+                        "hotter_side": "Left" if baseline_stats['asymmetry'] > 0 else "Right",
+                        "peak_region": f"{reg_name} ({muscle})",
+                        "peak_value": f"{val:.2f}°C",
                         "classification": graph_result["risk_level"] + " Risk"
+                    },
+                    "ambient_stats": {
+                        "background_temp": f"{baseline_stats['background_mean']:.2f}°C",
+                        "relative_skin_temp": f"{baseline_stats['relative_temp']:.2f}°C"
                     },
                     "recovery_status": {
                         "recommendation": " | ".join(graph_result["recommendations"])
@@ -69,14 +93,30 @@ class ThermographicAnalyzer:
                     }
                 }
                 
-                # Optional: Add acute trend if post exists
-                if view_data["post"] is not None:
-                    post_stats = self.processor.process_frame(view_data["post"])
-                    report["inflammation_trend"] = {
-                        "acute_response": f"Temp increased to {post_stats['overall_mean']:.1f}°C",
-                        "peak_intensity": f"Peak: {post_stats['max_temp']:.1f}°C",
-                        "new_asymmetries": "Stable" if abs(post_stats['asymmetry'] - stats['asymmetry']) < 0.5 else "Elevated"
-                    }
+                for phase in ["post", "recovery"]:
+                    if view_data[phase] is not None:
+                        phase_stats = self.processor.process_frame(view_data[phase])
+                        p_reg, p_muscle, p_val = self.get_max_asymmetry_info(view, phase_stats["regions"])
+                        
+                        asym_delta = abs(phase_stats['asymmetry']) - abs(baseline_stats['asymmetry'])
+                        temp_delta = phase_stats['relative_temp'] - baseline_stats['relative_temp']
+                        hot_side = "Left" if phase_stats['asymmetry'] > 0 else "Right"
+                        
+                        if phase == "post":
+                            report["inflammation_trend"] = {
+                                "asymmetry_change": f"{asym_delta:+.2f}°C",
+                                "hotter_side": hot_side,
+                                "peak_asymmetry_node": f"{p_reg} ({p_muscle})",
+                                "relative_temp_shift": f"{temp_delta:+.2f}°C (vs ambient)",
+                                "peak_intensity": f"{phase_stats['max_temp']:.1f}°C"
+                            }
+                        else:
+                            report["recovery_delta"] = {
+                                "asymmetry_recovery": f"{asym_delta:+.2f}°C",
+                                "hotter_side": hot_side,
+                                "peak_recovery_node": f"{p_reg} ({p_muscle})",
+                                "relative_temp_recovery": f"{temp_delta:+.2f}°C (vs ambient)"
+                            }
 
                 full_report["analyses"][view] = report
 

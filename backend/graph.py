@@ -32,13 +32,15 @@ class ThermographicGraph:
     def clinical_interpreter_node(self, state: AnalysisState):
         """
         Mock LLM node for interpreting thermal stats.
-        In a real app, you'd pass stats to an LLM like GPT-4 or Claude.
         """
-        stats = state["stats"]
-        asym = abs(stats["asymmetry"])
+        stats = state.get("stats", {})
+        asym = abs(stats.get("asymmetry", 0))
+        mean = stats.get("overall_mean", 0)
         
-        interpretation = f"Analysis of {state['view']} reveals a mean temperature of {stats['overall_mean']:.1f}°C. "
-        if asym > 1.0:
+        interpretation = f"Analysis of {state['view']} reveals a mean temperature of {mean:.1f}°C. "
+        if not stats or mean == 0:
+             interpretation = f"Insufficient thermal data detected in {state['view']} to perform anatomical segmentation."
+        elif asym > 1.0:
             interpretation += f"Critical asymmetry of {asym:.2f}°C detected. "
         elif asym > 0.4:
             interpretation += f"Moderate asymmetry of {asym:.2f}°C detected. "
@@ -51,11 +53,14 @@ class ThermographicGraph:
         """
         Logic-based or LLM-based risk classification.
         """
-        asym = abs(state["stats"]["asymmetry"])
-        max_temp = state["stats"]["max_temp"]
+        stats = state.get("stats", {})
+        asym = abs(stats.get("asymmetry", 0))
+        max_temp = stats.get("max_temp", 0)
         
         risk = "Low"
-        if asym > 1.2 or max_temp > 36.5:
+        if not stats or max_temp == 0:
+            risk = "Unknown"
+        elif asym > 1.2 or max_temp > 36.5:
             risk = "High"
         elif asym > 0.6:
             risk = "Medium"
