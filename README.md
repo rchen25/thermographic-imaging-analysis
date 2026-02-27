@@ -1,78 +1,50 @@
 # Thermographic Imaging Analysis Agent
 
-A specialized Sports Medicine and Thermographic Imaging system designed to analyze athlete recovery through thermal patterns. This system processes high-resolution temperature grids to identify inflammation, muscle recovery trends, and physiological asymmetries across three workout phases.
+A specialized Sports Medicine and Thermographic Imaging system designed to analyze athlete recovery through thermal patterns. This system integrates Computer Vision for precise limb segmentation and LangGraph for intelligent diagnostic reasoning.
 
 ## 🚀 Features
 
-- **Automated Thermal Grid Analysis**: Parses complex Excel-based temperature data into numerical arrays.
+- **CV-Powered ROI Extraction**: Automatically segments human skin from background noise using thermal thresholding and contour detection.
+- **LangGraph Reasoning Pipeline**: Uses a state-based graph to chain clinical interpretation, risk assessment, and recovery planning.
+- **Unified Single-Port Architecture**: Serves both the React frontend and FastAPI backend from a single port (8000) for simplified deployment.
 - **Multi-Phase Tracking**: Compares Pre-workout (Baseline), Post-workout (Acute), and Recovery 48hr (Chronic) phases.
-- **Asymmetry Detection**: Quantifies heat distribution differences between left and right limbs to identify potential injury risks.
-- **Agentic Recommendations**: Generates clinical recovery protocols (Cryotherapy, Active Recovery, Rest) based on thermal intensity and lingering hotspots.
-- **Visual Dashboard**: A modern React-based interface to visualize thermal images and quantitative reports side-by-side.
+- **Visual Dashboard**: Modern React interface to visualize segmented thermal data and agentic reports.
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Python, FastAPI, Pandas, NumPy, OpenPyXL.
-- **Frontend**: React, TypeScript, Vite, Lucide Icons.
-- **Analysis Engine**: Proprietary logic based on `THERMOGRAPHIC_AGENT.md` mandates.
+- **Backend**: Python, FastAPI, LangGraph, OpenCV, Pandas, NumPy.
+- **Frontend**: React, TypeScript, Vite.
+- **Dependency Management**: `uv` (Fastest Python package installer/runner).
 
-## 📋 Prerequisites
+## 🔧 Launch Instructions
 
-- Python 3.10+
-- Node.js 18+
-- npm
+The entire system is unified into a single launch script.
 
-## 🔧 Local Setup Instructions
+### Prerequisites
+- [uv](https://github.com/astral-sh/uv) installed (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- Node.js 18+ & npm
 
-To run the full agentic dashboard locally, you will need two terminal windows open simultaneously.
-
-### Step 1: Backend API
-The backend processes the thermal data and serves the images.
+### Start the Application
 ```bash
-# Navigate to project root
-pip install fastapi uvicorn pandas openpyxl numpy
-
-# Start the server
-python3 backend/main.py
+chmod +x launch.sh
+./launch.sh
 ```
-*The API will be live at http://localhost:8000. You can verify it by visiting http://localhost:8000/sessions in your browser.*
 
-### Step 2: Frontend Dashboard
-The frontend provides the visual interface for the agent.
-```bash
-# In a new terminal window
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start the Vite development server
-npm run dev
-```
-*Open your browser to the URL provided by Vite (usually http://localhost:5173).*
-
-### Step 3: Run Analysis
-1. Select **Session 001** from the dropdown.
-2. Click **Run Analysis**.
-3. The Agent will display the thermographic images and generate its clinical report.
-
-## 📈 Analysis Workflow
-
-1. **Baseline Assessment**: Identifies existing "hot spots" and calculates initial asymmetry.
-2. **Immediate Response**: Compares Post-workout data against baseline to identify acute inflammation and new asymmetries.
-3. **Recovery Evaluation**: Assesses the 48hr delta to verify if thermal signatures have returned to baseline or if lingering heat indicates overtraining.
+**Access the Dashboard:** [http://localhost:8000](http://localhost:8000)
 
 ## 📂 Project Structure
 
 ```
 ├── backend/
-│   ├── analyzer.py   # Core thermal analysis logic
-│   └── main.py       # FastAPI implementation
+│   ├── main.py        # FastAPI Entry point & Static File Serving
+│   ├── analyzer.py    # Orchestration of Vision & Graph pipelines
+│   ├── processor.py   # Computer Vision (OpenCV) Segmentation
+│   └── graph.py       # LangGraph Diagnostic Workflow
 ├── frontend/
-│   ├── src/          # React components & UI
-│   └── index.html
-├── images/           # Dataset (organized by Session ID)
-└── THERMOGRAPHIC_AGENT.md # Agent role & definitions
+│   ├── src/           # React components
+│   └── dist/          # Compiled production build (served by backend)
+├── images/            # Dataset (Raw PNGs + Excel Temperature Grids)
+└── launch.sh          # Unified build & run script
 ```
 
 ---

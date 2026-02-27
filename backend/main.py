@@ -14,14 +14,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static images
-app.mount("/images", StaticFiles(directory="images"), name="images")
+# Initialize analyzer
+images_path = os.path.join(os.path.dirname(__file__), "..", "images")
+analyzer = ThermographicAnalyzer(images_path)
 
-analyzer = ThermographicAnalyzer("images")
-
+# API Routes must come before mounting the frontend at "/"
 @app.get("/sessions")
 async def list_sessions():
-    sessions = [d for d in os.listdir("images") if os.path.isdir(os.path.join("images", d))]
+    # Use the absolute images_path determined above
+    sessions = [d for d in os.listdir(images_path) if os.path.isdir(os.path.join(images_path, d))]
     return {"sessions": sessions}
 
 @app.get("/analyze/{session_id}")
@@ -31,6 +32,14 @@ async def analyze_session(session_id: str):
         return report
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Serve static images
+app.mount("/images", StaticFiles(directory=images_path), name="images")
+
+# Serve frontend
+frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
 
 if __name__ == "__main__":
     import uvicorn

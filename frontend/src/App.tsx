@@ -37,7 +37,7 @@ function App() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetch('http://localhost:8000/sessions')
+    fetch('/sessions')
       .then(res => res.json())
       .then(data => {
         setSessions(data.sessions)
@@ -49,7 +49,7 @@ function App() {
     if (!selectedSession) return
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:8000/analyze/${selectedSession}`)
+      const res = await fetch(`/analyze/${selectedSession}`)
       const data = await res.json()
       setReport(data)
     } catch (err) {

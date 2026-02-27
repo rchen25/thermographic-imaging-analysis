@@ -3,11 +3,14 @@ import numpy as np
 import os
 import glob
 import json
+from processor import ThermalImageProcessor
+from graph import ThermographicGraph
 
 class ThermographicAnalyzer:
     def __init__(self, data_dir):
         self.data_dir = data_dir
-        self.results = {}
+        self.processor = ThermalImageProcessor()
+        self.graph = ThermographicGraph()
 
     def clean_temp_string(self, val):
         if isinstance(val, str):
@@ -16,7 +19,6 @@ class ThermographicAnalyzer:
 
     def load_excel(self, file_path):
         df = pd.read_excel(file_path, header=None)
-        # Apply cleaning to all elements
         data = df.applymap(self.clean_temp_string).values
         return data
 
@@ -43,81 +45,39 @@ class ThermographicAnalyzer:
             }
             
             if view_data["pre"] is not None:
-                report = self.generate_agent_report(view, view_data)
-                # Add image URLs
-                report["images"] = {
-                    "pre": f"http://localhost:8000/images/{session_id}/PREWORKOUT_{view}.png",
-                    "post": f"http://localhost:8000/images/{session_id}/POSTWORKOUT_{view}.png",
-                    "recovery": f"http://localhost:8000/images/{session_id}/RECOVERY48HR_{view}.png"
+                # 1. Run Advanced Vision Pipeline on Pre-workout (Baseline)
+                stats = self.processor.process_frame(view_data["pre"])
+                
+                # 2. Run LangGraph Pipeline for interpretation
+                graph_result = self.graph.run(view, stats)
+                
+                # Format report for UI
+                report = {
+                    "visual_summary": graph_result["interpretation"],
+                    "asymmetry_report": {
+                        "baseline_asymmetry": f"{abs(stats['asymmetry']):.2f}°C",
+                        "primary_side": "Left" if stats['asymmetry'] > 0 else "Right",
+                        "classification": graph_result["risk_level"] + " Risk"
+                    },
+                    "recovery_status": {
+                        "recommendation": " | ".join(graph_result["recommendations"])
+                    },
+                    "images": {
+                        "pre": f"/images/{session_id}/PREWORKOUT_{view}.png",
+                        "post": f"/images/{session_id}/POSTWORKOUT_{view}.png",
+                        "recovery": f"/images/{session_id}/RECOVERY48HR_{view}.png"
+                    }
                 }
+                
+                # Optional: Add acute trend if post exists
+                if view_data["post"] is not None:
+                    post_stats = self.processor.process_frame(view_data["post"])
+                    report["inflammation_trend"] = {
+                        "acute_response": f"Temp increased to {post_stats['overall_mean']:.1f}°C",
+                        "peak_intensity": f"Peak: {post_stats['max_temp']:.1f}°C",
+                        "new_asymmetries": "Stable" if abs(post_stats['asymmetry'] - stats['asymmetry']) < 0.5 else "Elevated"
+                    }
+
                 full_report["analyses"][view] = report
 
         return full_report
-
-    def generate_agent_report(self, view, data):
-        pre = data["pre"]
-        post = data["post"]
-        recovery = data["recovery"]
-
-        report = {}
-
-        # 1. Baseline Assessment
-        mid = pre.shape[1] // 2
-        l_pre, r_pre = pre[:, :mid], pre[:, mid:]
-        avg_l_pre, avg_r_pre = np.mean(l_pre), np.mean(r_pre)
-        asym_pre = avg_l_pre - avg_r_pre
-        
-        report["visual_summary"] = f"Initial thermographic scan of {view} shows a mean temperature of {np.mean(pre):.2f}°C. "
-        if abs(asym_pre) > 0.5:
-            report["visual_summary"] += f"Significant baseline heat concentration detected in the {'left' if asym_pre > 0 else 'right'} side."
-        else:
-            report["visual_summary"] += "Heat distribution is relatively uniform across both limbs."
-
-        report["asymmetry_report"] = {
-            "baseline_asymmetry": f"{abs(asym_pre):.2f}°C deviation",
-            "primary_side": "Left" if asym_pre > 0 else "Right",
-            "classification": "Pathological" if abs(asym_pre) > 1.2 else ("Subtle" if abs(asym_pre) > 0.3 else "Negligible")
-        }
-
-        # 2. Immediate Response
-        if post is not None:
-            diff_post = post - pre
-            max_inc = np.max(diff_post)
-            avg_inc = np.mean(diff_post)
-            l_post, r_post = post[:, :mid], post[:, mid:]
-            asym_post = np.mean(l_post) - np.mean(r_post)
-            
-            report["inflammation_trend"] = {
-                "acute_response": f"Mean temperature increased by {avg_inc:.2f}°C post-workout.",
-                "peak_intensity": f"Maximum localized increase of {max_inc:.2f}°C detected.",
-                "new_asymmetries": "Observed" if abs(asym_post - asym_pre) > 0.5 else "Stable"
-            }
-
-        # 3. Recovery Evaluation
-        if recovery is not None:
-            diff_rec = recovery - pre
-            avg_rec_delta = np.mean(diff_rec)
-            recovery_pct = (1 - (avg_rec_delta / avg_inc)) * 100 if 'avg_inc' in locals() and avg_inc != 0 else 0
-            
-            report["recovery_status"] = {
-                "recovery_percentage": f"{recovery_pct:.1f}%",
-                "lingering_hotspots": "Present" if np.max(diff_rec) > 1.5 else "Resolved",
-                "recommendation": self.get_recommendation(recovery_pct, np.max(diff_rec))
-            }
-
-        return report
-
-    def get_recommendation(self, recovery_pct, max_lingering):
-        if recovery_pct < 50 or max_lingering > 2.0:
-            return "High Risk: Implement immediate cryotherapy and 24hr complete rest. Possible localized strain."
-        elif recovery_pct < 80:
-            return "Moderate: Targeted active recovery (swimming/cycling) and contrast baths recommended."
-        else:
-            return "Optimal: Recovery on track. Resume standard training intensity."
-
-if __name__ == "__main__":
-    analyzer = ThermographicAnalyzer("images")
-    report = analyzer.analyze_session("001")
-    print(json.dumps(report, indent=2))
-    with open("report.json", "w") as f:
-        json.dump(report, f, indent=2)
