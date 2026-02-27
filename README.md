@@ -32,6 +32,12 @@ chmod +x launch.sh
 
 **Access the Dashboard:** [http://localhost:8000](http://localhost:8000)
 
+## 📖 Documentation Directory
+
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)**: Detailed technical breakdown of the Computer Vision (OpenCV) and Reasoning (LangGraph) pipelines.
+- **[GEMINI.md](./GEMINI.md)**: AI-specific context and development mandates for future development using Gemini CLI or other agents.
+- **[THERMOGRAPHIC_AGENT.md](./THERMOGRAPHIC_AGENT.md)**: The "Medical Brain" of the system, defining the roles, anatomical knowledge, and clinical thresholds for thermal analysis.
+
 ## 📂 Project Structure
 
 ```
